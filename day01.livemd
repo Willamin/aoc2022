@@ -117,6 +117,45 @@ end
 Part2.total_of_top_three(sample)
 ```
 
+## Final Outputs
+
 ```elixir
 %{part1: Part1.total_of_max(Load.input()), part2: Part2.total_of_top_three(Load.input())}
+```
+
+## Refactoring
+
+```elixir
+defmodule Refactor do
+  def total_of_max(input, elves_considered) do
+    input
+    |> String.split("\n\n")
+    |> Enum.map(fn a ->
+      a
+      |> String.split("\n")
+      |> Enum.flat_map(fn s ->
+        case Integer.parse(s) do
+          {i, _} -> [i]
+          _ -> []
+        end
+      end)
+      |> Enum.sum()
+    end)
+    |> Enum.sort()
+    |> Enum.reverse()
+    |> Enum.take(elves_considered)
+    |> Enum.sum()
+  end
+end
+
+%{
+  part1: %{
+    original_code: Part1.total_of_max(Load.input()),
+    refactored: Refactor.total_of_max(Load.input(), 1)
+  },
+  part2: %{
+    original_code: Part2.total_of_top_three(Load.input()),
+    refactored: Refactor.total_of_max(Load.input(), 3)
+  }
+}
 ```
