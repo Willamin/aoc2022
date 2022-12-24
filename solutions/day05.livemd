@@ -1,0 +1,275 @@
+# Day 5: Supply Stacks
+
+```elixir
+# from https://github.com/miladamilli/Advent_of_Code_2021
+defmodule Load do
+  def input do
+    Path.join(__DIR__, "/../inputs/day05.txt")
+    |> File.read!()
+  end
+end
+```
+
+## Part 1
+
+The expedition can depart as soon as the final supplies have been unloaded from the ships. Supplies are stored in stacks of marked crates, but because the needed supplies are buried under many other crates, the crates need to be rearranged.
+
+The ship has a giant cargo crane capable of moving crates between stacks. To ensure none of the crates get crushed or fall over, the crane operator will rearrange them in a series of carefully-planned steps. After the crates are rearranged, the desired crates will be at the top of each stack.
+
+The Elves don't want to interrupt the crane operator during this delicate procedure, but they forgot to ask her which crate will end up where, and they want to be ready to unload them as soon as possible so they can embark.
+
+They do, however, have a drawing of the starting stacks of crates and the rearrangement procedure (your puzzle input). For example:
+
+```elixir
+sample = """
+    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2
+"""
+```
+
+In this example, there are three stacks of crates. Stack 1 contains two crates: crate Z is on the bottom, and crate N is on top. Stack 2 contains three crates; from bottom to top, they are crates M, C, and D. Finally, stack 3 contains a single crate, P.
+
+Then, the rearrangement procedure is given. In each step of the procedure, a quantity of crates is moved from one stack to a different stack. In the first step of the above rearrangement procedure, one crate is moved from stack 2 to stack 1, resulting in this configuration:
+
+```
+[D]        
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+```
+
+In the second step, three crates are moved from stack 1 to stack 3. Crates are moved one at a time, so the first crate to be moved (D) ends up below the second and third crates:
+
+```
+        [Z]
+        [N]
+    [C] [D]
+    [M] [P]
+ 1   2   3
+```
+
+Then, both crates are moved from stack 2 to stack 1. Again, because crates are moved one at a time, crate C ends up below crate M:
+
+```
+        [Z]
+        [N]
+[M]     [D]
+[C]     [P]
+ 1   2   3
+```
+
+Finally, one crate is moved from stack 1 to stack 2:
+
+```
+        [Z]
+        [N]
+        [D]
+[C] [M] [P]
+ 1   2   3
+```
+
+The Elves just need to know which crate will end up on top of each stack; in this example, the top crates are C in stack 1, M in stack 2, and Z in stack 3, so you should combine these together and give the Elves the message CMZ.
+
+After the rearrangement procedure completes, what crate ends up on top of each stack?
+
+```elixir
+defmodule Part1 do
+  def solve(input) do
+    [starting_crates, _separator, operations | _] =
+      input
+      |> String.split("\n", trim: false)
+      |> Enum.chunk_by(fn x -> x == "" end)
+
+    [labels | crates] = starting_crates |> Enum.reverse()
+    crates = crates |> Enum.reverse()
+
+    crate_count =
+      labels
+      |> String.split(" ", trim: true)
+      |> Enum.count()
+
+    parsed_crates =
+      1..crate_count
+      |> Enum.map(fn i ->
+        crates
+        |> Enum.map(fn row ->
+          row |> String.at((i - 1) * 4 + 1)
+        end)
+        |> Enum.filter(fn x -> x != " " end)
+      end)
+
+    operations
+    |> Enum.map(&parse_op/1)
+    |> Enum.reduce(parsed_crates, &Part1.do_operation/2)
+    |> Enum.map(&hd/1)
+    |> Enum.join()
+  end
+
+  def parse_op(str) do
+    ["move", count, "from", origin, "to", target] = str |> String.split(" ")
+
+    with {count, _} <- Integer.parse(count),
+         {origin, _} <- Integer.parse(origin),
+         {target, _} <- Integer.parse(target) do
+      [count: count, from: origin - 1, to: target - 1]
+    end
+  end
+
+  def do_operation([count: 0, from: _origin, to: _target], crates), do: crates
+
+  def do_operation([count: count, from: origin, to: target], crates) do
+    [carry | origin_stack] = crates |> Enum.at(origin)
+    target_stack = crates |> Enum.at(target)
+
+    crates =
+      crates
+      |> List.replace_at(origin, origin_stack)
+      |> List.replace_at(target, [carry | target_stack])
+
+    do_operation([count: count - 1, from: origin, to: target], crates)
+  end
+end
+
+Part1.solve(sample)
+```
+
+```elixir
+Load.input()
+|> Part1.solve()
+```
+
+## Part 2
+
+As you watch the crane operator expertly rearrange the crates, you notice the process isn't following your prediction.
+
+Some mud was covering the writing on the side of the crane, and you quickly wipe it away. The crane isn't a CrateMover 9000 - it's a CrateMover 9001.
+
+The CrateMover 9001 is notable for many new and exciting features: air conditioning, leather seats, an extra cup holder, and the ability to pick up and move multiple crates at once.
+
+Again considering the example above, the crates begin in the same configuration:
+
+```
+    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+```
+
+Moving a single crate from stack 2 to stack 1 behaves the same as before:
+
+```
+[D]        
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+```
+
+However, the action of moving three crates from stack 1 to stack 3 means that those three moved crates stay in the same order, resulting in this new configuration:
+
+```
+        [D]
+        [N]
+    [C] [Z]
+    [M] [P]
+ 1   2   3
+```
+
+Next, as both crates are moved from stack 2 to stack 1, they retain their order as well:
+
+```
+        [D]
+        [N]
+[C]     [Z]
+[M]     [P]
+ 1   2   3
+```
+
+Finally, a single crate is still moved from stack 1 to stack 2, but now it's crate C that gets moved:
+
+```
+        [D]
+        [N]
+        [Z]
+[M] [C] [P]
+ 1   2   3
+```
+
+In this example, the CrateMover 9001 has put the crates in a totally different order: MCD.
+
+Before the rearrangement process finishes, update your simulation so that the Elves know where they should stand to be ready to unload the final supplies. After the rearrangement procedure completes, what crate ends up on top of each stack?
+
+```elixir
+defmodule Part2 do
+  def solve(input) do
+    [starting_crates, _separator, operations | _] =
+      input
+      |> String.split("\n", trim: false)
+      |> Enum.chunk_by(fn x -> x == "" end)
+
+    [labels | crates] = starting_crates |> Enum.reverse()
+    crates = crates |> Enum.reverse()
+
+    crate_count =
+      labels
+      |> String.split(" ", trim: true)
+      |> Enum.count()
+
+    parsed_crates =
+      1..crate_count
+      |> Enum.map(fn i ->
+        crates
+        |> Enum.map(fn row ->
+          row |> String.at((i - 1) * 4 + 1)
+        end)
+        |> Enum.filter(fn x -> x != " " end)
+      end)
+
+    operations
+    |> Enum.map(&parse_op/1)
+    |> Enum.reduce(parsed_crates, &Part2.do_operation/2)
+    |> Enum.map(&hd/1)
+    |> Enum.join()
+  end
+
+  def parse_op(str) do
+    ["move", count, "from", origin, "to", target] = str |> String.split(" ")
+
+    with {count, _} <- Integer.parse(count),
+         {origin, _} <- Integer.parse(origin),
+         {target, _} <- Integer.parse(target) do
+      [count: count, from: origin - 1, to: target - 1]
+    end
+  end
+
+  def do_operation([count: 0, from: _origin, to: _target], crates), do: crates
+
+  def do_operation([count: count, from: origin, to: target], crates) do
+    this_stack = crates |> Enum.at(origin)
+
+    carry = this_stack |> Enum.take(count)
+    origin_stack = this_stack |> Enum.drop(count)
+    target_stack = crates |> Enum.at(target)
+
+    crates =
+      crates
+      |> List.replace_at(origin, origin_stack)
+      |> List.replace_at(target, [carry | target_stack] |> List.flatten())
+
+    crates
+  end
+end
+
+Part2.solve(sample)
+```
+
+```elixir
+Load.input()
+|> Part2.solve()
+```
